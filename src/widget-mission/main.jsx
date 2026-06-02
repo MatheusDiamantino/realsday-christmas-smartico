@@ -1,0 +1,321 @@
+import React, { createRef, useCallback, useEffect, useRef, useState } from "react";
+import { CHRISTMAS_MISSION_IDS } from "../config/christmas.js";
+
+const ScrollItems = ({ className, children }) => {
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
+  const carouselRef = useRef(null);
+
+  const onDragStart = (e) => {
+    const pageX = e.pageX ?? e?.touches?.[0]?.pageX ?? 0;
+    setIsDragging(true);
+    setStartX(pageX - carouselRef.current.offsetLeft);
+    setScrollLeft(carouselRef.current.scrollLeft);
+  };
+  const onDragEnd = () => setIsDragging(false);
+  const onDragMove = (e) => {
+    if (!isDragging) return;
+    e.preventDefault?.();
+    const pageX = e.pageX ?? e?.touches?.[0]?.pageX ?? 0;
+    const x = pageX - carouselRef.current.offsetLeft;
+    carouselRef.current.scrollLeft = scrollLeft - (x - startX) * 1.5;
+  };
+
+  return (
+    <div
+      className={className}
+      ref={carouselRef}
+      onMouseDown={onDragStart}
+      onMouseLeave={onDragEnd}
+      onMouseUp={onDragEnd}
+      onMouseMove={onDragMove}
+      onTouchStart={onDragStart}
+      onTouchEnd={onDragEnd}
+      onTouchMove={onDragMove}
+    >
+      {children}
+    </div>
+  );
+};
+
+const toArray = (val) => {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  return [val];
+};
+
+const normalizeText = (v) => (v || "").toString().trim().toLowerCase();
+
+const getLevelHints = (level, levelIndex) => {
+  const id = level?.id;
+  const name = normalizeText(level?.name);
+  const index = Number.isFinite(levelIndex) ? Number(levelIndex) : undefined;
+  const cd = level?.custom_data || {};
+  const tags = [
+    ...toArray(cd.mission_tags),
+    ...toArray(cd.tags),
+    ...toArray(cd.level_tags),
+  ]
+    .map(normalizeText)
+    .filter(Boolean);
+  return { id, name, index, tags };
+};
+
+// Extrai meta de exibição de forma resiliente, considerando diferentes estruturas da API
+const getMissionDisplayName = (mission) => {
+  const candidates = [
+    mission?.name,
+    mission?.public_meta?.name,
+    mission?.achievement_public_meta?.name,
+    mission?.meta?.name,
+  ];
+  const found = candidates.find((v) => v && String(v).trim().length);
+  return found || `Missão ${mission?.id ?? ""}`;
+};
+
+const getMissionImageUrl = (mission) => {
+  const candidates = [
+    mission?.image,
+    mission?.public_meta?.image_url,
+    mission?.public_meta?.image_url_small,
+    mission?.achievement_public_meta?.image_url,
+    mission?.image_url,
+    mission?.image_url_small,
+    mission?.custom_data?.image,
+  ];
+  const found = candidates.find((v) => typeof v === "string" && v.trim().length);
+  return found || "";
+};
+
+// Extrai um possível número da missão (1,2,3...) baseado em várias chaves e no nome
+const getMissionNumber = (mission) => {
+  if (!mission) return undefined;
+  const cd = mission.custom_data || {};
+  const numCandidates = [
+    mission.number,
+    mission.index,
+    mission.order,
+    mission.position,
+    cd.number,
+    cd.index,
+    cd.order,
+    cd.position,
+  ].map((v) => (v != null ? Number(v) : undefined)).filter((v) => Number.isFinite(v));
+  if (numCandidates.length) return numCandidates[0];
+  const name = (mission.name || "").toString();
+  const m = name.match(/miss[ãa]o\s*(\d+)/i);
+  if (m && Number(m[1])) return Number(m[1]);
+  return undefined;
+};
+
+const Missions = ({ level, levelIndex, maxItems = 1 }) => {
+  const [loading, setLoading] = useState(true);
+  const [missions, setMissions] = useState([]);
+  const [timeLeftForMissions, setTimeLeftForMissions] = useState({});
+
+  const missionsContainerRef = useRef(null);
+  const missionRefs = useRef([]);
+
+  const smarticoApi = window?._smartico?.api;
+
+  missionRefs.current = missions.map((_, i) => missionRefs.current[i] ?? createRef());
+
+  const calculateTimeLeft = (mission) => {
+    const now = Date.now();
+    const end = mission.dt_start + mission.time_limit_ms;
+    const diff = end - now;
+    if (diff < 0) return null;
+    const days = Math.floor(diff / 86400000);
+    const hours = Math.floor((diff % 86400000) / 3600000);
+    const minutes = Math.floor((diff % 3600000) / 60000);
+    const seconds = Math.floor((diff % 60000) / 1000);
+    return { days, hours, minutes, seconds };
+  };
+
+  // Seleciona missões, priorizando estritamente os IDs configurados
+  const pickSingleMission = useCallback((list) => {
+    const arr = Array.isArray(list) ? list : [];
+    const ids = CHRISTMAS_MISSION_IDS.map(Number);
+    const asMap = new Map(arr.map((m) => [Number(m.id), m]));
+    const orderedByIds = ids.map((id) => asMap.get(id)).filter(Boolean);
+    const source = orderedByIds;
+
+    // Quando queremos mais de 1 missão, devolvemos as primeiras correspondentes
+    if (maxItems > 1) {
+      return source.slice(0, maxItems);
+    }
+
+    // Preferir missão cujo número bata com o índice da insígnia (index + 1)
+    const hints = getLevelHints(level, levelIndex);
+    const preferNumber = typeof hints.index === 'number' ? hints.index + 1 : undefined;
+    const candidateByNumber = source.find((m) => getMissionNumber(m) === preferNumber);
+    if (candidateByNumber) return [candidateByNumber];
+
+    // Caso não tenha candidato por número, usar pela posição do índice
+    if (source.length > 0) {
+      const pos = hints.index != null ? hints.index % source.length : 0;
+      return [source[pos]];
+    }
+
+    // Sem correspondência: quando não encontramos nenhuma missão pelos IDs configurados,
+    // criar um fallback mínimo para garantir renderização sem quebrar.
+    if (ids.length) {
+      const fallback = ids.map((id) => ({
+        id,
+        name: `Missão ${id}`,
+        image: "",
+        reward: "",
+        progress: 0,
+        tasks: [],
+        dt_start: Date.now(),
+        time_limit_ms: 0,
+        is_locked: false,
+        is_completed: false,
+        is_in_progress: false,
+        is_opted_in: false,
+        is_requires_optin: false,
+      }));
+      return fallback.slice(0, maxItems);
+    }
+    return [];
+  }, [level, levelIndex, maxItems]);
+
+  useEffect(() => {
+    const load = async () => {
+      // Fallback local imediato quando API não estiver disponível
+      if (!smarticoApi || typeof smarticoApi.getMissions !== "function") {
+        const ids = CHRISTMAS_MISSION_IDS.map(Number);
+        const fallback = ids.map((id) => ({
+          id,
+          name: `Missão ${id}`,
+          image: "",
+          reward: "",
+          progress: 0,
+          tasks: [],
+          dt_start: Date.now(),
+          time_limit_ms: 0,
+          is_locked: false,
+          is_completed: false,
+          is_in_progress: false,
+          is_opted_in: false,
+          is_requires_optin: false,
+        }));
+        setMissions(fallback.slice(0, maxItems));
+        setLoading(false);
+        return;
+      }
+      const res = await smarticoApi.getMissions({
+        onUpdate: (ms) => {
+          setMissions(pickSingleMission(ms));
+        },
+      });
+      setMissions(pickSingleMission(res));
+      setLoading(false);
+    };
+    load();
+  }, [smarticoApi, pickSingleMission, maxItems]);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      const next = {};
+      missions.forEach((m) => {
+        next[m.id] = calculateTimeLeft(m);
+      });
+      setTimeLeftForMissions(next);
+    }, 20000);
+    return () => clearInterval(id);
+  }, [missions]);
+
+  if (loading) return null;
+
+  return (
+    <div className="missions-container">
+      
+
+      <div className="missions-list" ref={missionsContainerRef}>
+        {missions.map((mission, index) => {
+          const timeLeft = timeLeftForMissions[mission.id];
+          return (
+            <button
+              ref={missionRefs.current[index]}
+              className="mission"
+              onClick={() => {
+                // 1º item abre dl-missions; 2º item abre dl-missions-2
+                const preferred = index === 0 ? "dl-missions" : "dl-missions-2";
+                const aPreferred = document.getElementById(preferred);
+                if (aPreferred) {
+                  aPreferred.click();
+                  return;
+                }
+                const fallback = index === 0 ? "dl-missions-2" : "dl-missions";
+                const aFallback = document.getElementById(fallback);
+                if (aFallback) {
+                  aFallback.click();
+                  return;
+                }
+                console.warn("[Missions] Anchors de missão não encontrados (dl-missions / dl-missions-2).");
+              }}
+              key={mission.id}
+            >
+              <div className="mission-block">
+                <div className="mission-left">
+                  <div className="image" style={{ backgroundImage: `url('${getMissionImageUrl(mission)}')` }} />
+                </div>
+
+                <div className="mission-right">
+                  <div className="mission-info">
+                    <div className="name" dangerouslySetInnerHTML={{ __html: getMissionDisplayName(mission) }} />
+                    {/* <div className={`status ${getStatusClassName(mission)}`}>{missionStatus(mission)}</div> */}
+                  </div>
+
+                  {mission.reward && (
+                    <div className="reward">
+                      <span>Recompensas:</span> {mission.reward}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {mission.progress > 0 && (
+                <div className="progress-bar-block">
+                  <div className="progress-bar-text">
+                    <div className="label">Progress</div>
+                    <div className="numbers">{mission.progress} <span>/ 100%</span></div>
+                  </div>
+                  <div className="progress-bar">
+                    <div className="progress" style={{ width: `${mission.progress}%` }} />
+                  </div>
+                </div>
+              )}
+
+              
+
+              {timeLeft && (
+                <div className="time">
+                  <div className="time-text">Mission duration</div>
+                  <div className="timer">
+                    {timeLeft.days > 0 && (
+                      <div className="time-number">{timeLeft.days.toString().padStart(2, "0")}</div>
+                    )}
+                    <div className="time-number">{timeLeft.hours.toString().padStart(2, "0")}</div>
+                    <div className="time-delimiter">:</div>
+                    <div className="time-number">{timeLeft.minutes.toString().padStart(2, "0")}</div>
+                    <div className="time-delimiter">:</div>
+                    <div className="time-number">{timeLeft.seconds.toString().padStart(2, "0")}</div>
+                  </div>
+                </div>
+              )}
+            </button>
+          );
+        })}
+
+        {missions.length === 0 && (
+          <div className="no-missions">Nenhuma missão vinculada a esta insígnia.</div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default Missions;
