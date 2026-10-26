@@ -11,10 +11,8 @@ import {
   CHRISTMAS_DAILY_GIFT_ID,
   CHRISTMAS_MISSION_IDS,
 } from "../config/christmas.js";
-// IDs centralizados (importados do config)
 const MISSION_IDS = CHRISTMAS_MISSION_IDS;
 
-// Ativa animações (tema de Natal)
 const DISABLE_ANIMATIONS = false;
 
 const SCROLL_OFFSET = 200;
@@ -23,14 +21,12 @@ const fishPositions = [
   { top: "317PX", left: "-1px", transform: "rotateY(180deg)" },
 ];
 
-// Posições verticais disponíveis para a rena
 const REINDEER_POSITIONS = [
   { width: "120px", height: "120px", bottom: "100px", left: "-160px" },
   { width: "120px", height: "120px", bottom: "320px", left: "-160px" },
   { width: "120px", height: "120px", bottom: "400px", left: "-160px" },
 ];
 
-// Outras animações fixas (sem rena)
 const animations = [
   {
     key: "Smoke",
@@ -49,15 +45,13 @@ const getRandomPosition = () => {
   return fishPositions[randomIndex];
 };
 
-// Helper para resolver a imagem da ilha por nível/índice (usa assets locais em /public/img)
 const getLevelImageUrl = (level, disabled, index) => {
   if (!level) return "";
-  // Conjunto de imagens locais para cada construção
   const activeImages = [
-    "https://images.reals.bet.br/CRM/Widgets+CRM/Natal+Map/img/construção 3.png",
-    "https://images.reals.bet.br/CRM/Widgets+CRM/Natal+Map/img/construção 4.png",
-    "https://images.reals.bet.br/CRM/Widgets+CRM/Natal+Map/img/construção 1.png",
-    "https://images.reals.bet.br/CRM/Widgets+CRM/Natal+Map/img/construção 2.png",
+    "/img/construção 3.png",
+    "/img/construção 4.png",
+    "/img/construção 1.png",
+    "/img/construção 2.png",
   ];
   const i = Number.isFinite(index) ? index % activeImages.length : 0;
   const activeUrl = activeImages[i];
@@ -74,7 +68,6 @@ const LevelMap = () => {
   const [fishPosition, setFishPosition] = useState(fishPositions[0]);
   const smarticoApi = window?._smartico?.api;
 
-  // Controle de ciclo da rena: renderiza uma por vez, reaparece após 5s
   const REINDEER_RESPAWN_MS = 5000;
   const [reindeerVisible, setReindeerVisible] = useState(true);
   const [reindeerIndex, setReindeerIndex] = useState(0);
@@ -115,7 +108,6 @@ const LevelMap = () => {
     }
   };
 
-  // Fim da corrida da rena: esconde e agenda novo spawn em 5s
   const handleReindeerEnd = () => {
     setReindeerVisible(false);
     setTimeout(() => {
@@ -173,7 +165,6 @@ const LevelMap = () => {
     }
   };
 
-  // Removido: limpeza de timer Hostar (feature descontinuada)
 
   if (loading) {
     return null;
@@ -215,7 +206,6 @@ const LevelMap = () => {
           </div>
           {!DISABLE_ANIMATIONS && (
             <div>
-              {/* Neve no background cobrindo o topo do mapa */}
               <div
                 className="animation-container snow"
                 style={{ top: 0, left: 0, width: "100%", height: "40%", zIndex: 0 }}
@@ -228,7 +218,6 @@ const LevelMap = () => {
                   background="transparent"
                 />
               </div>
-              {/* Rena única correndo de esquerda para direita; reaparece após 5s */}
               {reindeerVisible && (
                 <div
                   className="animation-container reindeer-run"
@@ -271,13 +260,11 @@ const LevelMap = () => {
                 </div>
               ))}
 
-              {/* Espaço reservado sem easter eggs */}
             </div>
           )}
         </div>
       </div>
 
-            {/* Overlay antigo removido */}
 
       {showCard && currentLevel && (
         <LevelCardModal
@@ -308,7 +295,6 @@ const LevelMap = () => {
   );
 };
 
-// Configurações personalizadas para cada modal (tema Natal)
 const modalConfigs = [
   {
     title: "PRESENTE DE NATAL",
@@ -348,7 +334,6 @@ const modalConfigs = [
   },
 ];
 
-// Funções auxiliares para filtrar missões
 const toArray = (value) => (Array.isArray(value) ? value : [value]);
 
 const normalizeText = (text) => {
@@ -370,7 +355,6 @@ const matchesLevel = (mission, level) => {
   return levelHints.some((hint) => missionName.includes(hint));
 };
 
-// Componente para botões sobrepostos às missões
 const MissionOverlayButtons = ({ level, levelIndex, maxItems = 2 }) => {
   const [loading, setLoading] = useState(true);
   const [missions, setMissions] = useState([]);
@@ -417,14 +401,12 @@ const MissionOverlayButtons = ({ level, levelIndex, maxItems = 2 }) => {
   }, [level, levelIndex, maxItems, smarticoApi]);
 
   const handleMissionClick = (mission, index) => {
-    // Direciona especificamente o 1º botão para dl-missions e o 2º para dl-missions-2
     const preferred = index === 0 ? "dl-missions" : "dl-missions-2";
     const aPreferred = document.getElementById(preferred);
     if (aPreferred) {
       aPreferred.click();
       return;
     }
-    // Fallback: tenta o outro anchor, depois avisa
     const fallback = index === 0 ? "dl-missions-2" : "dl-missions";
     const aFallback = document.getElementById(fallback);
     if (aFallback) {
@@ -447,7 +429,6 @@ const MissionOverlayButtons = ({ level, levelIndex, maxItems = 2 }) => {
           onClick={() => handleMissionClick(mission, index)}
           aria-label={`Executar missão: ${mission.name}`}
         >
-          {/* Botão transparente sobreposto */}
         </button>
       ))}
     </div>
@@ -456,7 +437,6 @@ const MissionOverlayButtons = ({ level, levelIndex, maxItems = 2 }) => {
 
 export default LevelMap;
 
-// Bloco dinâmico de Torneio: busca e exibe o torneio ativo/mais próximo
 function TournamentDynamicBlock() {
   const [loading, setLoading] = useState(true);
   const [tournament, setTournament] = useState(null);
@@ -470,7 +450,6 @@ function TournamentDynamicBlock() {
       }
       const onUpdate = (list) => {
         const arr = Array.isArray(list) ? list : [];
-        // 1) Seleciona por ID configurado
         const byId = arr.find(
           (t) => Number(t.id) === Number(CHRISTMAS_TOURNAMENT_ID)
         );
@@ -478,7 +457,6 @@ function TournamentDynamicBlock() {
           setTournament(byId);
           return;
         }
-        // 2) Fallback opcional por nome configurado (case-insensitive, substring)
         const nameQuery = String(CHRISTMAS_TOURNAMENT_NAME || "")
           .trim()
           .toLowerCase();
@@ -510,13 +488,11 @@ function TournamentDynamicBlock() {
   }
 
   const openTournament = () => {
-    // Prioriza o href já configurado no index.html
     const a = document.getElementById("dl-tournaments");
     if (a) {
       a.click();
       return;
     }
-    // Fallback: usa dp com o ID selecionado (se existir)
     const dp = window?._smartico?.dp;
     const selectedId = tournament?.id ?? CHRISTMAS_TOURNAMENT_ID;
     const deepLink = `dp:gf_tournaments&id=${selectedId}`;
@@ -530,7 +506,7 @@ function TournamentDynamicBlock() {
     <div className="tournament-layout" role="region" aria-label="Torneio ativo">
       <section className="tournament-image">
         <img
-          src="https://images.reals.bet.br/CRM/Widgets+CRM/Natal+Map/img/banner-torneio.webp"
+          src="/img/banner-torneio.svg"
           alt={tournament?.name || "Torneio"}
           className="tournament-banner"
         />
@@ -572,17 +548,15 @@ const LevelItem = ({ level, index, setShowCard, setCurrentLevel }) => {
     return null;
   }
 
-  // Todos desbloqueados
   const disabled = false;
 
   const handleClick = () => {
-    if (disabled) return; // bloqueado: não abre modal
+    if (disabled) return;
     setCurrentLevel(level);
     setShowCard(true);
   };
 
   const imageUrl = getLevelImageUrl(level, disabled, index);
-  // Fallback para garantir visibilidade enquanto validamos URLs remotas
   const safeImageUrl = imageUrl;
   if (!imageUrl) {
     console.warn(
@@ -601,7 +575,6 @@ const LevelItem = ({ level, index, setShowCard, setCurrentLevel }) => {
         aria-disabled={disabled}
         title={disabled ? "Bloqueado" : level.name}
       >
-        {/* bloco de fantasma removido para tema de Natal */}
         <button
           type="button"
           className="level-image-btn"
@@ -622,10 +595,8 @@ const LevelCardModal = ({ level, showCard, setShowCard, levelIndex }) => {
     return null;
   }
 
-  // Obtém a configuração do modal baseada no levelIndex
   const modalConfig = modalConfigs[levelIndex] || null;
 
-  // Gera classe específica para cada modal (sem Disney/Hotstar)
   const getModalClass = () => {
     if (!modalConfig) return "";
 
@@ -667,12 +638,10 @@ const LevelCardModal = ({ level, showCard, setShowCard, levelIndex }) => {
                 <h2 className="modal-title">{modalConfig.title}</h2>
               </div>
               <div className="modal-body">
-                {/* Torneio de Natal */}
                 {modalConfig.title === "TORNEIO DE NATAL" && (
                   <TournamentDynamicBlock />
                 )}
 
-                {/* Presente de Natal */}
                 {modalConfig.title === "PRESENTE DE NATAL" && (
                   <section
                     className="present-layout"
@@ -684,13 +653,11 @@ const LevelCardModal = ({ level, showCard, setShowCard, levelIndex }) => {
                       <button
                         className="cta-btn"
                         onClick={() => {
-                          // Prioriza o href já configurado no index.html
                           const giftAnchor = document.getElementById("dl-daily-gift");
                           if (giftAnchor) {
                             giftAnchor.click();
                             return;
                           }
-                          // Fallback: deep link via dp com ID local
                           const dp = window?._smartico?.dp;
                           const deepLink = `dp:gf_section&id=${CHRISTMAS_DAILY_GIFT_ID}`;
                           if (typeof dp === "function") {
@@ -705,20 +672,17 @@ const LevelCardModal = ({ level, showCard, setShowCard, levelIndex }) => {
                   </section>
                 )}
 
-                {/* Gift Box Natal */}
                 {modalConfig.title === "CALDEIRÃO - NATAL" && (
                   <section
                     className="giftbox-layout"
                     aria-label="Gift Box Natal"
                   >
                     <div className="missions-wrapper">
-                      {/* Missões do Caldeirão: duas empilhadas */}
                       <Missions
                         level={level}
                         levelIndex={levelIndex}
                         maxItems={2}
                       />
-                      {/* Botões sobrepostos clicáveis */}
                       <MissionOverlayButtons
                         level={level}
                         levelIndex={levelIndex}

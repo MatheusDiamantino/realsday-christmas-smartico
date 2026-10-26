@@ -1,79 +1,61 @@
-# Widget Natal (React + Vite)
+# Widget de Natal com Smartico
 
-Widget front-end pensado para rodar como integração com a Smartico (missões, torneios e mapa/níveis).
+Mapa de níveis interativo com tema de Natal, com missões, torneio e presente diário, feito em React e Vite.
 
-## O que é
+Desenvolvido profissionalmente para a **UX Group**, empresa dona das marcas de apostas **Reals, Bingo e BetGo**. É um widget de gamificação integrado à plataforma **Smartico**. Este repositório é uma versão sem as marcas: chaves, IDs de campanha, domínios e imagens das marcas foram trocados por variáveis de ambiente e imagens genéricas.
 
-- Widget em React que renderiza um “mapa de níveis” com missões e torneio, consumindo dados via `window._smartico.api` quando a Smartico está disponível.
-- O projeto roda sem Smartico configurado (renderiza o layout e usa fallbacks), para facilitar desenvolvimento e demonstração.
-- No desktop, o app é apresentado dentro de um frame em formato de celular (UI “mobile-first”).
+## Funcionalidades
 
-## Como funciona
+- **Mapa de níveis** com rolagem por arraste e botões, usando os níveis de `window._smartico.api.getLevels()`, um prédio ilustrado por nível
+- **Animações Lottie** (rena, neve e fumaça) por cima do mapa
+- **Modais por nível**:
+  - **Presente de Natal**: explica a regra e abre o presente diário por deep link
+  - **Torneio de Natal**: escolhe o torneio pelo ID (ou pelo nome) em `getTournamentsList()` e mostra o prêmio total, as inscrições e o botão de participar
+  - **Missões**: busca as missões com `getMissions()`, dá prioridade aos IDs configurados e atualiza pelo `onUpdate`
+- **Deep links `dp:`** da Smartico (`gf_tournaments`, `gf_missions`, `gf_section`) em links ocultos, com os IDs preenchidos ao carregar a página
+- **Funciona sem a Smartico**: sem as chaves configuradas, o layout aparece com dados de reserva, o que ajuda no desenvolvimento e na demonstração
+- **Moldura de celular** no desktop, já que o layout é pensado primeiro para mobile
 
-### Entrada e Smartico
+## Stack
 
-- [index.jsx](file:///c:/Users/mathe/Downloads/Widget-Natal/index.jsx) inicializa deep links do widget e tenta carregar o script da Smartico (quando configurado).
-- [App.jsx](file:///c:/Users/mathe/Downloads/Widget-Natal/src/App.jsx) renderiza o layout sempre. Quando a Smartico está disponível, os componentes usam a API; caso contrário, o layout continua renderizando.
+- React 19
+- Vite 7, com `@vitejs/plugin-react` e `@vitejs/plugin-legacy` para navegadores antigos
+- Sass (SCSS)
+- `@lottiefiles/react-lottie-player`
+- ESLint 9
 
-### Deep links
-
-Os links `dp:` (Smartico) ficam como anchors invisíveis no HTML e são atualizados em runtime:
-
-- `dl-tournaments` → `dp:gf_tournaments&id=...`
-- `dl-missions` → `dp:gf_missions&id=...`
-- `dl-missions-2` → `dp:gf_missions&id=...`
-- `dl-daily-gift` → `dp:gf_section&id=...`
-
-Isso permite que os botões do layout simplesmente “cliquem” nesses anchors, sem hardcode de IDs no HTML.
-
-### Estrutura de pastas (resumo)
-
-- `src/widget-pass/` → mapa/níveis + modais e visual principal
-- `src/widget-mission/` → listagem e seleção de missões (prioriza IDs configurados)
-- `src/widget-tourments/` → listagem de torneios
-- `src/functions/` → helpers (ex: ações protegidas, timers)
-- `src/config/` → configuração via variáveis de ambiente
-
-## Configuração (variáveis de ambiente)
-
-As chaves reais da Smartico não ficam no repositório. Use o arquivo de exemplo:
-
-- `.env.example` (copie para `.env`)
-
-Variáveis principais:
-
-- `VITE_SMARTICO_PROJECT_KEY` / `VITE_SMARTICO_BRAND_KEY` → habilitam a integração Smartico
-- `VITE_SMARTICO_PUBLIC_USER_ID` / `VITE_SMARTICO_PUBLIC_USER_HASH` → usuário “demo” para dev (opcional)
-- `VITE_CHRISTMAS_TOURNAMENT_ID`, `VITE_CHRISTMAS_MISSION_IDS`, `VITE_CHRISTMAS_DAILY_GIFT_ID` → IDs da campanha
-
-## Requisitos
-
-- Node.js + npm
-
-## Configuração
-
-1. Instale as dependências:
+## Como rodar
 
 ```bash
 npm install
-```
-
-2. Crie um arquivo `.env` a partir do exemplo:
-
-```bash
-copy .env.example .env
-```
-
-3. Preencha as variáveis do `.env` (as chaves reais não ficam no repositório).
-
-## Rodar local
-
-```bash
+cp .env.example .env
 npm run dev
 ```
 
-## Build
+Preencha o `.env` com as suas chaves e IDs. Todas as variáveis são opcionais: sem elas, o widget mostra só o layout.
+
+| Variável | Uso |
+| --- | --- |
+| `VITE_SMARTICO_PROJECT_KEY` / `VITE_SMARTICO_BRAND_KEY` | Ligam a integração com a Smartico |
+| `VITE_SMARTICO_PUBLIC_USER_ID` / `VITE_SMARTICO_PUBLIC_USER_HASH` | Usuário de demonstração |
+| `VITE_CHRISTMAS_TOURNAMENT_ID` / `VITE_CHRISTMAS_TOURNAMENT_NAME` | Torneio da campanha |
+| `VITE_CHRISTMAS_MISSION_IDS` | IDs das missões, separados por vírgula |
+| `VITE_CHRISTMAS_DAILY_GIFT_ID` | Seção do presente diário |
+
+Build de produção:
 
 ```bash
 npm run build
+```
+
+## Estrutura
+
+```
+index.jsx               ponto de entrada: deep links e carregamento da Smartico
+src/App.jsx             moldura de celular e espera pela API da Smartico
+src/config/christmas.js leitura das variáveis da campanha
+src/widget-pass/        mapa de níveis, modais, animações e estilos
+src/widget-mission/     lista e carrossel de missões
+src/widget-tourments/   lista de torneios
+public/img/             ilustrações do mapa e ícones
 ```
